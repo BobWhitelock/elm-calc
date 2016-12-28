@@ -32,10 +32,15 @@ type Operator
 init : String -> ( Model, Cmd Msg )
 init path =
     ( { numberOperatorPairs = []
-      , currentNumber = Decimal [] Nothing
+      , currentNumber = newDecimal
       }
     , Cmd.none
     )
+
+
+newDecimal : Decimal
+newDecimal =
+    Decimal [] Nothing
 
 
 type Msg
@@ -49,7 +54,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Operator operator ->
-            ( model, Cmd.none )
+            handleOperator operator model
 
         Digit digit ->
             handleDigit digit model
@@ -59,6 +64,57 @@ update msg model =
 
         Equals ->
             ( model, Cmd.none )
+
+
+handleOperator : Operator -> Model -> ( Model, Cmd Msg )
+handleOperator operator model =
+    let
+        newModel =
+            if model.currentNumber == newDecimal then
+                -- If we've not started entering any of the current number yet,
+                -- just replace the last operator.
+                replaceLastOperator operator model
+            else
+                pushNewPair operator model
+    in
+        ( newModel, Cmd.none )
+
+
+replaceLastOperator : Operator -> Model -> Model
+replaceLastOperator operator model =
+    let
+        lastPair =
+            List.head model.numberOperatorPairs
+
+        lastNumber =
+            case lastPair of
+                Just pair ->
+                    pair.number
+
+                Nothing ->
+                    newDecimal
+
+        otherPairs =
+            List.tail model.numberOperatorPairs
+                |> Maybe.withDefault []
+
+        newLastPair =
+            { number = lastNumber
+            , operator = operator
+            }
+    in
+        { model | numberOperatorPairs = newLastPair :: otherPairs }
+
+
+pushNewPair : Operator -> Model -> Model
+pushNewPair operator model =
+    { numberOperatorPairs =
+        { number = model.currentNumber
+        , operator = operator
+        }
+            :: model.numberOperatorPairs
+    , currentNumber = newDecimal
+    }
 
 
 handleDigit : Int -> Model -> ( Model, Cmd Msg )
@@ -152,7 +208,39 @@ view model =
 
 result : Model -> Html Msg
 result model =
-    span [] [ text (decimalToString model.currentNumber) ]
+    span [] [ text (modelToString model) ]
+
+
+modelToString : Model -> String
+modelToString model =
+    let
+        pairs =
+            List.map numberOperatorPairToString model.numberOperatorPairs
+                |> List.reverse
+                |> String.join ""
+    in
+        pairs ++ decimalToString model.currentNumber
+
+
+numberOperatorPairToString : NumberOperatorPair -> String
+numberOperatorPairToString pair =
+    (decimalToString pair.number) ++ (operatorToString pair.operator)
+
+
+operatorToString : Operator -> String
+operatorToString operator =
+    case operator of
+        Plus ->
+            "+"
+
+        Minus ->
+            "−"
+
+        Multiply ->
+            "×"
+
+        Divide ->
+            "÷"
 
 
 decimalToString : Decimal -> String
@@ -186,22 +274,7 @@ numberButton num =
 
 operatorButton : Operator -> Html Msg
 operatorButton operator =
-    let
-        symbol =
-            case operator of
-                Plus ->
-                    "+"
-
-                Minus ->
-                    "−"
-
-                Multiply ->
-                    "×"
-
-                Divide ->
-                    "÷"
-    in
-        button [] [ text symbol ]
+    button [ onClick (Operator operator) ] [ text (operatorToString operator) ]
 
 
 subscriptions : Model -> Sub Msg
