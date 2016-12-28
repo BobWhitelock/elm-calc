@@ -5,14 +5,20 @@ import Html.Events exposing (onClick)
 
 
 type alias Model =
-    { partialSum : Maybe PartialSum
-    , currentNumber : NumberUnderConstruction
+    { numberOperatorPairs : List NumberOperatorPair
+    , currentNumber : Decimal
     }
 
 
-type alias PartialSum =
-    { answer : Float
-    , operator : Maybe Operator
+type alias NumberOperatorPair =
+    { number : Decimal
+    , operator : Operator
+    }
+
+
+type alias Decimal =
+    { integerPart : List Int
+    , fractionalPart : Maybe (List Int)
     }
 
 
@@ -23,16 +29,10 @@ type Operator
     | Divide
 
 
-type alias NumberUnderConstruction =
-    { integerPart : List Int
-    , fractionalPart : Maybe (List Int)
-    }
-
-
 init : String -> ( Model, Cmd Msg )
 init path =
-    ( { partialSum = Nothing
-      , currentNumber = NumberUnderConstruction [] Nothing
+    ( { numberOperatorPairs = []
+      , currentNumber = Decimal [] Nothing
       }
     , Cmd.none
     )
@@ -152,19 +152,19 @@ view model =
 
 result : Model -> Html Msg
 result model =
-    span [] [ text (currentNumberString model.currentNumber) ]
+    span [] [ text (decimalToString model.currentNumber) ]
 
 
-currentNumberString : NumberUnderConstruction -> String
-currentNumberString currentNumber =
+decimalToString : Decimal -> String
+decimalToString currentNumber =
     let
         integerPart =
-            numberPartsToString currentNumber.integerPart
+            decimalPartToString currentNumber.integerPart
 
         fractionalPart =
             case currentNumber.fractionalPart of
-                Just parts ->
-                    "." ++ numberPartsToString parts
+                Just part ->
+                    "." ++ decimalPartToString part
 
                 Nothing ->
                     ""
@@ -172,9 +172,9 @@ currentNumberString currentNumber =
         integerPart ++ fractionalPart
 
 
-numberPartsToString : List Int -> String
-numberPartsToString parts =
-    List.map toString parts
+decimalPartToString : List Int -> String
+decimalPartToString part =
+    List.map toString part
         |> List.reverse
         |> String.concat
 
